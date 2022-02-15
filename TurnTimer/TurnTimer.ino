@@ -2,26 +2,30 @@
 
 //pins
 const byte BUTTON_PIN = 3;
-const byte DATA_PIN = 6; 
+const byte DATA_PIN = 6;
 
 // LED array
-const byte NUM_LEDS = 16; 
+const byte NUM_LEDS = 16;
 CRGB leds[NUM_LEDS];
 
-// Colors for setting time https://github.com/FastLED/FastLED/wiki/FastLED-HSV-Colors
-const CHSV uncountedColor = CHSV(0, 255, 255); //Red
-const CHSV secondsCountedColor = CHSV(160, 255, 255); //Blue
-const CHSV minutesCountedColor = CHSV(96, 255, 255); // Green
-const CHSV hoursCountedColor = CHSV(64, 255, 255); // Yellow
+// Colors used when setting time.  Color ref: https://github.com/FastLED/FastLED/wiki/FastLED-HSV-Colors
+const CHSV UNCOUNTED_COLOR = CHSV(0, 255, 255); //Red
+const CHSV SECONDS_COUNTED_COLOR = CHSV(160, 255, 255); //Blue
+const CHSV MINUTES_COUNTED_COLOR = CHSV(96, 255, 255); // Green
+const CHSV HOURS_COUNTED_COLOR = CHSV(64, 255, 255); // Yellow
 
-// 
-const unsigned long selectorBlinkInterval = 250; // ON/OFF interval for selector LED when setting time
-const unsigned long holdToFinishInterval = 2 * 1000; // How long to hold button when making final selection for time
-long turnTime = 0;
+// Colors / "Hue" used durring each turn (0-255)
+const int START_HUE = 85; //Green(ish) MUST be a number < END_HUE
+const int END_HUE = 255; //Red
+const int HUE_INCREMENT = END_HUE - START_HUE; // Used to change color based on selcted turn time
 
+// Timing settings
+const unsigned long HOLD_TO_FINISH_INTERVAL = 2 * 1000; // How long to hold button when making final selection for time
+long turnTime = 0; // Manages the turnTime - determined in setup(), used in loop()
 
-// Flag to reset counter
+// Flag set in ISR to indicate a button press
 volatile boolean buttonPressed = false;
+
 
 /************************************************************
    ISR: Actions to take on button press
@@ -37,7 +41,6 @@ void ARDUINO_ISR_ATTR buttonPress() {
   }
   last_interrupt_time = interrupt_time;
 }
-
 
 /************************************************************
    LED Effect: Set all LEDs same color
@@ -74,7 +77,7 @@ void fadeall() {
 /************************************************************
    LED Effect: Half Cyclon
  ***********************************************************/
-void signalTimeSelected(CHSV color) {
+void halfCylon(CHSV color) {
   static uint8_t hue = 0;
 
   for (int i = 0; i < NUM_LEDS; i++) {
@@ -83,7 +86,15 @@ void signalTimeSelected(CHSV color) {
     fadeall();
     delay(10);
   }
+}
 
+/************************************************************
+   Signal a time unit has been selected
+ ***********************************************************/
+void signalTimeSelected(CHSV color) {
+  for (int i = 0; i < 10; i++) {
+    halfCylon(color);
+  }
 }
 
 /************************************************************
@@ -91,35 +102,17 @@ void signalTimeSelected(CHSV color) {
  ***********************************************************/
 int selectTime(CHSV uncountedColor, CHSV countedColor) {
 
-  int timeCounter = 0;
-  boolean timeSet = false;
-  boolean selectorLEDState = LOW;
-  unsigned long previousMillis = 0;
-
-  unsigned long previousButtonHoldTime = 0;
+  int timeCounter = 0; // This tracks the button presses, each button press is a time unit
+  boolean timeSet = false; // When this flag is set, the count for the current time unit is returned
+  unsigned long previousButtonHoldTime = 0; // Used for determining long button hold time
 
   while (!timeSet) {
 
-
-    // Set all LEDs to color based on counted or uncounted
+    // Set color of each LED based on counted or uncounted
     for (int i = 0; i < NUM_LEDS; i++) {
-      leds[i] = i > timeCounter
-                ? uncountedColor
-                : countedColor;
-    }
-
-    // The "selector" or "cursor" is the LED after the last counted LED.  It blinks.
-    unsigned long currentMillis = millis(); // Check current time
-
-    if (currentMillis - previousMillis >= selectorBlinkInterval) {
-      previousMillis = currentMillis; // save the last time you blinked
-      selectorLEDState = ! selectorLEDState; // switch the LED state flag
-    }
-
-    // Change the selector LED to Red
-    // (note we do not need to set Blue, because the for loop above takes care of that)
-    if (selectorLEDState == LOW) {
-      leds[timeCounter] = CHSV(0, 255, 255);
+      leds[i] = i < timeCounter
+                ? countedColor
+                : uncountedColor;
     }
 
     FastLED.show();
@@ -127,44 +120,29 @@ int selectTime(CHSV uncountedColor, CHSV countedColor) {
     // Increment count when button pressed
     if (buttonPressed) {
 
-      buttonPressed = false;
+      buttonPressed = false; // Reset ISR button flag
       timeCounter++;
-
-      Serial.print("Time Counter = ");
-      Serial.println(timeCounter);
 
       //Rollover timeCounter if max reached
       if (timeCounter >= NUM_LEDS) {
         timeCounter = 0;
       }
-
     }
 
-    // Exit while loop on long button hold
+    // Check if button held
     if (!digitalRead(BUTTON_PIN)) {
-      unsigned long buttonHoldTime = millis() - previousButtonHoldTime;
 
-      Serial.print("buttonHoldTime = ");
-      Serial.println(buttonHoldTime);
+      // Exit while if button has been held "long" time
+      if (millis() - previousButtonHoldTime > HOLD_TO_FINISH_INTERVAL) {
 
-      Serial.print("previousButtonHoldTime = ");
-      Serial.println(previousButtonHoldTime);
-
-      if (buttonHoldTime > holdToFinishInterval) {
-        timeSet = true;
-
-        //Display cylon effect to show done
-        for (int i = 0; i < 10; i++) {
-          signalTimeSelected(countedColor);
-        }
-
-        buttonPressed = false;
+        timeSet = true;  // Setting this flag exists the "set time" while loop
+        signalTimeSelected(countedColor); //Display cylon effect to show selection has been made
+        buttonPressed = false; // reset ISR button flag
       }
-
+      
     } else {
       previousButtonHoldTime = millis();
     }
-
   }
 
   return timeCounter; //Returns the number of times the button was pressed (less the long hold)
@@ -172,9 +150,9 @@ int selectTime(CHSV uncountedColor, CHSV countedColor) {
 
 
 /************************************************************
-   Computer Turn Time
+   Compute Turn Time
  ***********************************************************/
-long computeTurnTime(int s, int m, int h) {
+long computeTurnTime(int s = 0, int m = 0, int h = 0) {
 
   s = s * 5 * 1000; // 5 seconds for every count
 
@@ -192,17 +170,18 @@ long computeTurnTime(int s, int m, int h) {
 void setup() {
   Serial.begin(115200);
 
-  FastLED.addLeds<NEOPIXEL, DATA_PIN>(leds, NUM_LEDS);
+  FastLED.addLeds<NEOPIXEL, DATA_PIN>(leds, NUM_LEDS); //adds the
   FastLED.setBrightness(84);
 
   pinMode(BUTTON_PIN, INPUT_PULLUP);
   attachInterrupt(BUTTON_PIN, buttonPress, RISING);
 
-  long secondsCount = selectTime(uncountedColor, secondsCountedColor);
-  long minutesCount = selectTime(uncountedColor, minutesCountedColor);
-  long hoursCount = selectTime(uncountedColor, hoursCountedColor);
+  // Set turn time.  Select seconds, then minutes.
+  long secondsCount = selectTime(UNCOUNTED_COLOR, SECONDS_COUNTED_COLOR);
+  long minutesCount = selectTime(UNCOUNTED_COLOR, MINUTES_COUNTED_COLOR);
+  //long hoursCount = selectTime(UNCOUNTED_COLOR, HOURS_COUNTED_COLOR); //Add this is you have REALLY long turns
 
-  turnTime = computeTurnTime(secondsCount, minutesCount, hoursCount);
+  turnTime = computeTurnTime(secondsCount, minutesCount);
 }
 
 void loop() {
@@ -210,10 +189,10 @@ void loop() {
   boolean overTime = false;
 
   // As turn time elapses, show a fade from Green to Blue to Red
-  for (int hue = 85; hue <= 255; hue++) {
+  for (int hue = START_HUE; hue <= END_HUE; hue++) {
     changeAllColorTo(hue);
     FastLED.show();
-    delay(turnTime / 170);
+    delay(turnTime / HUE_INCREMENT);
 
     // If button flag was set in ISR then exit
     if (buttonPressed) {
@@ -222,7 +201,7 @@ void loop() {
     }
 
     // If button is not pressed before turn ends, LEDs go into "overtime" mode
-    if (hue == 255) {
+    if (hue == END_HUE) {
       overTime = true;
     }
   }
