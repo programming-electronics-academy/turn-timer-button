@@ -103,10 +103,9 @@ void signalTimeSelected(CHSV color) {
 int selectTime(CHSV uncountedColor, CHSV countedColor) {
 
   int timeCounter = 0; // This tracks the button presses, each button press is a time unit
-  boolean timeSet = false; // When this flag is set, the count for the current time unit is returned
   unsigned long previousButtonHoldTime = 0; // Used for determining long button hold time
 
-  while (!timeSet) {
+  while (true) {
 
     // Set color of each LED based on counted or uncounted
     for (int i = 0; i < NUM_LEDS; i++) {
@@ -135,9 +134,9 @@ int selectTime(CHSV uncountedColor, CHSV countedColor) {
       // Exit while if button has been held "long" time
       if (millis() - previousButtonHoldTime > HOLD_TO_FINISH_INTERVAL) {
 
-        timeSet = true;  // Setting this flag exists the "set time" while loop
         signalTimeSelected(countedColor); //Display cylon effect to show selection has been made
         buttonPressed = false; // reset ISR button flag
+        break;
       }
       
     } else {
