@@ -104,24 +104,29 @@ int selectTime(CHSV uncountedColor, CHSV countedColor) {
 
   int timeCounter = 0; // This tracks the button presses, each button press is a time unit
   unsigned long previousButtonHoldTime = 0; // Used for determining long button hold time
+  boolean update = true; 
 
   while (true) {
 
-    // Set color of each LED based on counted or uncounted
-    for (int i = 0; i < NUM_LEDS; i++) {
-      leds[i] = i < timeCounter
-                ? countedColor
-                : uncountedColor;
-    }
+    if (update) {
+      // Set color of each LED based on counted or uncounted
+      for (int i = 0; i < NUM_LEDS; i++) {
+        leds[i] = i < timeCounter
+                  ? countedColor
+                  : uncountedColor;
+      }
 
-    FastLED.show();
+      FastLED.show();
+      update = false;
+    }
 
     // Increment count when button pressed
     if (buttonPressed) {
 
       buttonPressed = false; // Reset ISR button flag
       timeCounter++;
-
+      update = true;
+      
       //Rollover timeCounter if max reached
       if (timeCounter >= NUM_LEDS) {
         timeCounter = 0;
