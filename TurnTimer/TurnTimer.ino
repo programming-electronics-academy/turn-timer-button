@@ -32,14 +32,7 @@ volatile boolean buttonPressed = false;
  ***********************************************************/
 void ARDUINO_ISR_ATTR buttonPress() {
 
-  static unsigned long last_interrupt_time = 0;
-  unsigned long interrupt_time = millis();
-  // If interrupts come faster than 200ms, assume it's a bounce and ignore
-  if (interrupt_time - last_interrupt_time > 200)
-  {
     buttonPressed = true; //flag that button was pressed
-  }
-  last_interrupt_time = interrupt_time;
 }
 
 /************************************************************
@@ -103,29 +96,37 @@ void signalTimeSelected(CHSV color) {
 int selectTime(CHSV uncountedColor, CHSV countedColor) {
 
   int timeCounter = 0; // This tracks the button presses, each button press is a time unit
-  boolean timeSet = false; // When this flag is set, the count for the current time unit is returned
   unsigned long previousButtonHoldTime = 0; // Used for determining long button hold time
+  boolean update = true; 
 
-  while (!timeSet) {
+  while (true) {
 
-    // Set color of each LED based on counted or uncounted
-    for (int i = 0; i < NUM_LEDS; i++) {
-      leds[i] = i < timeCounter
-                ? countedColor
-                : uncountedColor;
+    if (update) {
+      // Set color of each LED based on counted or uncounted
+      for (int i = 0; i < NUM_LEDS; i++) {
+        leds[i] = i < timeCounter
+                  ? countedColor
+                  : uncountedColor;
+      }
+
+      FastLED.show();
+      update = false;
     }
-
-    FastLED.show();
 
     // Increment count when button pressed
     if (buttonPressed) {
 
-      buttonPressed = false; // Reset ISR button flag
-      timeCounter++;
+      // Debounce button press
+      delay(50); 
+      if(digitalRead(BUTTON_PIN)) {
+        buttonPressed = false; // Reset ISR button flag
+        timeCounter++;
+        update = true;
 
-      //Rollover timeCounter if max reached
-      if (timeCounter >= NUM_LEDS) {
-        timeCounter = 0;
+        //Rollover timeCounter if max reached
+        if (timeCounter >= NUM_LEDS) {
+          timeCounter = 0;
+        }
       }
     }
 
@@ -135,9 +136,9 @@ int selectTime(CHSV uncountedColor, CHSV countedColor) {
       // Exit while if button has been held "long" time
       if (millis() - previousButtonHoldTime > HOLD_TO_FINISH_INTERVAL) {
 
-        timeSet = true;  // Setting this flag exists the "set time" while loop
         signalTimeSelected(countedColor); //Display cylon effect to show selection has been made
         buttonPressed = false; // reset ISR button flag
+        break;
       }
       
     } else {
@@ -152,7 +153,7 @@ int selectTime(CHSV uncountedColor, CHSV countedColor) {
 /************************************************************
    Compute Turn Time
  ***********************************************************/
-long computeTurnTime(int s = 0, int m = 0, int h = 0) {
+long computeTurnTime(long s = 0, long m = 0, long h = 0) {
 
   s = s * 5 * 1000; // 5 seconds for every count
 
@@ -174,7 +175,7 @@ void setup() {
   FastLED.setBrightness(84);
 
   pinMode(BUTTON_PIN, INPUT_PULLUP);
-  attachInterrupt(BUTTON_PIN, buttonPress, RISING);
+  attachInterrupt(digitalPinToInterrupt(BUTTON_PIN), buttonPress, RISING);
 
   // Set turn time.  Select seconds, then minutes.
   long secondsCount = selectTime(UNCOUNTED_COLOR, SECONDS_COUNTED_COLOR);
