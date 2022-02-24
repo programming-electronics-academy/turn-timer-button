@@ -153,7 +153,7 @@ int selectTime(CHSV uncountedColor, CHSV countedColor) {
 /************************************************************
    Compute Turn Time
  ***********************************************************/
-long computeTurnTime(int s = 0, int m = 0, int h = 0) {
+long computeTurnTime(long s = 0, long m = 0, long h = 0) {
 
   s = s * 5 * 1000; // 5 seconds for every count
 
@@ -175,7 +175,7 @@ void setup() {
   FastLED.setBrightness(84);
 
   pinMode(BUTTON_PIN, INPUT_PULLUP);
-  attachInterrupt(BUTTON_PIN, buttonPress, RISING);
+  attachInterrupt(digitalPinToInterrupt(BUTTON_PIN), buttonPress, RISING);
 
   // Set turn time.  Select seconds, then minutes.
   long secondsCount = selectTime(UNCOUNTED_COLOR, SECONDS_COUNTED_COLOR);
