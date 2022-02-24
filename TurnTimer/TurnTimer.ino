@@ -32,14 +32,7 @@ volatile boolean buttonPressed = false;
  ***********************************************************/
 void ARDUINO_ISR_ATTR buttonPress() {
 
-  static unsigned long last_interrupt_time = 0;
-  unsigned long interrupt_time = millis();
-  // If interrupts come faster than 200ms, assume it's a bounce and ignore
-  if (interrupt_time - last_interrupt_time > 200)
-  {
     buttonPressed = true; //flag that button was pressed
-  }
-  last_interrupt_time = interrupt_time;
 }
 
 /************************************************************
@@ -123,13 +116,17 @@ int selectTime(CHSV uncountedColor, CHSV countedColor) {
     // Increment count when button pressed
     if (buttonPressed) {
 
-      buttonPressed = false; // Reset ISR button flag
-      timeCounter++;
-      update = true;
-      
-      //Rollover timeCounter if max reached
-      if (timeCounter >= NUM_LEDS) {
-        timeCounter = 0;
+      // Debounce button press
+      delay(50); 
+      if(digitalRead(BUTTON_PIN)) {
+        buttonPressed = false; // Reset ISR button flag
+        timeCounter++;
+        update = true;
+
+        //Rollover timeCounter if max reached
+        if (timeCounter >= NUM_LEDS) {
+          timeCounter = 0;
+        }
       }
     }
 
