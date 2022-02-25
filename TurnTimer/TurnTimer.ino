@@ -153,7 +153,7 @@ int selectTime(CHSV uncountedColor, CHSV countedColor) {
 /************************************************************
    Compute Turn Time
  ***********************************************************/
-long computeTurnTime(long s = 0, long m = 0, long h = 0) {
+long computeTurnTime(long s = 0, long m = 0) {
 
   s = s * 5 * 1000; // 5 seconds for every count
 
@@ -163,9 +163,7 @@ long computeTurnTime(long s = 0, long m = 0, long h = 0) {
     m = m * 5 * 60 * 1000; // 5 min for every count over 10
   }
 
-  h = h * 60 * 60 * 1000; // 1 hour for every count
-
-  return s + m + h; // in milliseconds
+  return s + m; // in milliseconds
 }
 
 void setup() {
@@ -180,8 +178,7 @@ void setup() {
   // Set turn time.  Select seconds, then minutes.
   long secondsCount = selectTime(UNCOUNTED_COLOR, SECONDS_COUNTED_COLOR);
   long minutesCount = selectTime(UNCOUNTED_COLOR, MINUTES_COUNTED_COLOR);
-  //long hoursCount = selectTime(UNCOUNTED_COLOR, HOURS_COUNTED_COLOR); //Add this is you have REALLY long turns
-
+ 
   turnTime = computeTurnTime(secondsCount, minutesCount);
 }
 
