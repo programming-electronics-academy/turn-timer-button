@@ -30,8 +30,8 @@ volatile boolean buttonPressed = false;
 /************************************************************
    ISR: Actions to take on button press
  ***********************************************************/
-void ARDUINO_ISR_ATTR buttonPress() {
-
+//void ARDUINO_ISR_ATTR buttonPress() {
+void buttonPress() {
     buttonPressed = true; //flag that button was pressed
 }
 
