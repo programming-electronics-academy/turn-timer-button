@@ -1,27 +1,27 @@
 #include <FastLED.h>
 
 //pins
-const byte BUTTON_PIN = 3;
-const byte DATA_PIN = 6;
+const byte BUTTON_PIN = 15;
+const byte DATA_PIN = 2;
 
 // LED array
-const byte NUM_LEDS = 16;
+const byte NUM_LEDS = 12;
 CRGB leds[NUM_LEDS];
 
 // Colors used when setting time.  Color ref: https://github.com/FastLED/FastLED/wiki/FastLED-HSV-Colors
-const CHSV UNCOUNTED_COLOR = CHSV(0, 255, 255); //Red
-const CHSV SECONDS_COUNTED_COLOR = CHSV(160, 255, 255); //Blue
-const CHSV MINUTES_COUNTED_COLOR = CHSV(96, 255, 255); // Green
-const CHSV HOURS_COUNTED_COLOR = CHSV(64, 255, 255); // Yellow
+const CHSV UNCOUNTED_COLOR = CHSV(0, 255, 255);          //Red
+const CHSV SECONDS_COUNTED_COLOR = CHSV(160, 255, 255);  //Blue
+const CHSV MINUTES_COUNTED_COLOR = CHSV(96, 255, 255);   // Green
+const CHSV HOURS_COUNTED_COLOR = CHSV(64, 255, 255);     // Yellow
 
 // Colors / "Hue" used durring each turn (0-255)
-const int START_HUE = 85; //Green(ish) MUST be a number < END_HUE
-const int END_HUE = 255; //Red
-const int HUE_INCREMENT = END_HUE - START_HUE; // Used to change color based on selcted turn time
+const int START_HUE = 85;                       //Green(ish) MUST be a number < END_HUE
+const int END_HUE = 255;                        //Red
+const int HUE_INCREMENT = END_HUE - START_HUE;  // Used to change color based on selected turn time
 
 // Timing settings
-const unsigned long HOLD_TO_FINISH_INTERVAL = 2 * 1000; // How long to hold button when making final selection for time
-long turnTime = 0; // Manages the turnTime - determined in setup(), used in loop()
+const unsigned long HOLD_TO_FINISH_INTERVAL = 2 * 1000;  // How long to hold button when making final selection for time
+long turnTime = 0;                                       // Manages the turnTime - determined in setup(), used in loop()
 
 // Flag set in ISR to indicate a button press
 volatile boolean buttonPressed = false;
@@ -30,9 +30,8 @@ volatile boolean buttonPressed = false;
 /************************************************************
    ISR: Actions to take on button press
  ***********************************************************/
-//void ARDUINO_ISR_ATTR buttonPress() {
 void buttonPress() {
-    buttonPressed = true; //flag that button was pressed
+  buttonPressed = true;  //flag that button was pressed
 }
 
 /************************************************************
@@ -95,9 +94,9 @@ void signalTimeSelected(CHSV color) {
  ***********************************************************/
 int selectTime(CHSV uncountedColor, CHSV countedColor) {
 
-  int timeCounter = 0; // This tracks the button presses, each button press is a time unit
-  unsigned long previousButtonHoldTime = 0; // Used for determining long button hold time
-  boolean update = true; 
+  int timeCounter = 0;                       // This tracks the button presses, each button press is a time unit
+  unsigned long previousButtonHoldTime = 0;  // Used for determining long button hold time
+  boolean update = true;
 
   while (true) {
 
@@ -105,8 +104,8 @@ int selectTime(CHSV uncountedColor, CHSV countedColor) {
       // Set color of each LED based on counted or uncounted
       for (int i = 0; i < NUM_LEDS; i++) {
         leds[i] = i < timeCounter
-                  ? countedColor
-                  : uncountedColor;
+                    ? countedColor
+                    : uncountedColor;
       }
 
       FastLED.show();
@@ -117,9 +116,9 @@ int selectTime(CHSV uncountedColor, CHSV countedColor) {
     if (buttonPressed) {
 
       // Debounce button press
-      delay(50); 
-      if(digitalRead(BUTTON_PIN)) {
-        buttonPressed = false; // Reset ISR button flag
+      delay(50);
+      if (digitalRead(BUTTON_PIN)) {
+        buttonPressed = false;  // Reset ISR button flag
         timeCounter++;
         update = true;
 
@@ -136,17 +135,17 @@ int selectTime(CHSV uncountedColor, CHSV countedColor) {
       // Exit while if button has been held "long" time
       if (millis() - previousButtonHoldTime > HOLD_TO_FINISH_INTERVAL) {
 
-        signalTimeSelected(countedColor); //Display cylon effect to show selection has been made
-        buttonPressed = false; // reset ISR button flag
+        signalTimeSelected(countedColor);  //Display cylon effect to show selection has been made
+        buttonPressed = false;             // reset ISR button flag
         break;
       }
-      
+
     } else {
       previousButtonHoldTime = millis();
     }
   }
 
-  return timeCounter; //Returns the number of times the button was pressed (less the long hold)
+  return timeCounter;  //Returns the number of times the button was pressed (less the long hold)
 }
 
 
@@ -155,21 +154,16 @@ int selectTime(CHSV uncountedColor, CHSV countedColor) {
  ***********************************************************/
 long computeTurnTime(long s = 0, long m = 0) {
 
-  s = s * 5 * 1000; // 5 seconds for every count
-
-  if ( m <= 11 ) {
-    m = m * 60 * 1000; // 1 minute for every count <= 10
-  } else {
-    m = m * 5 * 60 * 1000; // 5 min for every count over 10
-  }
-
-  return s + m; // in milliseconds
+  s = s * 5 * 1000;  // 5 seconds for every count
+  m = m * 60 * 1000;  // 1 minute for every count
+  
+  return s + m;  // in milliseconds
 }
 
 void setup() {
   Serial.begin(115200);
 
-  FastLED.addLeds<NEOPIXEL, DATA_PIN>(leds, NUM_LEDS); //adds the
+  FastLED.addLeds<NEOPIXEL, DATA_PIN>(leds, NUM_LEDS);
   FastLED.setBrightness(84);
 
   pinMode(BUTTON_PIN, INPUT_PULLUP);
@@ -178,7 +172,7 @@ void setup() {
   // Set turn time.  Select seconds, then minutes.
   long secondsCount = selectTime(UNCOUNTED_COLOR, SECONDS_COUNTED_COLOR);
   long minutesCount = selectTime(UNCOUNTED_COLOR, MINUTES_COUNTED_COLOR);
- 
+
   turnTime = computeTurnTime(secondsCount, minutesCount);
 }
 
@@ -194,7 +188,7 @@ void loop() {
 
     // If button flag was set in ISR then exit
     if (buttonPressed) {
-      buttonPressed = false; // Reset button flag
+      buttonPressed = false;  // Reset button flag
       break;
     }
 
@@ -215,4 +209,4 @@ void loop() {
       break;
     }
   }
-} // End loop()
+}  // End loop()
