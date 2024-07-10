@@ -1,8 +1,8 @@
 #include <FastLED.h>
 
 //pins
-const byte BUTTON_PIN = 3;
-const byte DATA_PIN = 6;
+const byte BUTTON_PIN = 5;
+const byte DATA_PIN = 4;
 
 // LED array
 const byte NUM_LEDS = 16;
