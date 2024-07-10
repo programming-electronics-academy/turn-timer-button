@@ -1,4 +1,4 @@
-# Turn Timer Project
+# Turn Timer Button Project
 
 This Arduino project uses individually addressable LED strips (aka NeoPixels) with the FastLED library to make a colorful and simple timer.
 
